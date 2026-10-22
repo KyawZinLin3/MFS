@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PLATFORM_ADMIN
+  COMPANY_ADMIN
+  BRANCH_MANAGER
+  OPERATOR
+  AUDITOR
+}
+
+enum TransferStatus {
+  COMPLETED
+  PROCESSING
+  PENDING
+  REVIEW
+  FAILED
+}
+
+model Company {
+  id        String     @id @default(cuid())
+  name      String
+  code      String     @unique
+  status    String     @default("ACTIVE")
+  branches  Branch[]
+  users     User[]
+  transfers Transfer[]
+  customerAccounts CustomerAccount[]
+  loanApplications LoanApplication[]
+  createdAt DateTime   @default(now())
+}
+
+model Branch {
+  id        String     @id @default(cuid())
+  companyId String
+  name      String
+  code      String
+  city      String
+  status    String     @default("ACTIVE")
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  members   UserBranch[]
+  transfers Transfer[]
+  customerAccounts CustomerAccount[]
+  loanApplications LoanApplication[]
+
+  @@unique([companyId, code])
+  @@index([companyId, status])
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  role         Role         @default(OPERATOR)
+  companyId    String?
+  active       Boolean      @default(true)
+  company      Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  branches     UserBranch[]
+  auditLogs    AuditLog[]
+  documents    Document[]
+  createdAt    DateTime     @default(now())
+
+  @@index([companyId, role])
+}
+
+model UserBranch {
+  userId   String
+  branchId String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch   Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@id([userId, branchId])
+}
+
+model Transfer {
+  id          String         @id @default(cuid())
+  reference   String         @unique
+  companyId   String
+  branchId    String
+  customer    String
+  destination String
+  amount      Decimal        @db.Decimal(14, 2)
+  currency    String         @default("USD")
+  status      TransferStatus
+  createdAt   DateTime       @default(now())
+  company     Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch      Branch         @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, branchId, createdAt])
+  @@index([companyId, status])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  companyId  String?
+  branchId   String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, branchId, createdAt])
+  @@index([userId, createdAt])
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  companyId   String
+  branchId    String
+  uploadedBy  String
+  objectKey   String   @unique
+  filename    String
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+
+  @@index([companyId, branchId, createdAt])
+}
+
+model CustomerAccount {
+  id                String   @id @default(cuid())
+  accountNumber     String   @unique
+  fullName          String
+  phone             String   @unique
+  email             String?
+  nationalId        String   @unique
+  dateOfBirth       DateTime
+  address           String
+  companyId         String
+  branchId          String
+  passwordHash      String
+  passwordEncrypted String
+  createdBy         String
+  createdAt         DateTime @default(now())
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch            Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  loanApplications  LoanApplication[]
+
+  @@index([companyId, branchId, createdAt])
+  @@index([fullName])
+}
+
+model LoanApplication {
+  id                String   @id @default(cuid())
+  applicationNumber String   @unique
+  applicantName     String
+  phone             String?
+  nationalId        String?
+  loanType          String
+  loanAmount        Decimal? @db.Decimal(14, 2)
+  tenureMonths      Int?
+  status            String   @default("DRAFT")
+  applicationData   Json
+  companyId         String
+  branchId          String
+  customerAccountId String?
+  createdBy         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  branch            Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customerAccount   CustomerAccount? @relation(fields: [customerAccountId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, branchId, createdAt])
+  @@index([companyId, status, createdAt])
+  @@index([applicantName])
+  @@index([customerAccountId])
+}

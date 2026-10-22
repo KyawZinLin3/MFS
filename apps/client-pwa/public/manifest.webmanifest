@@ -1,0 +1,15 @@
+{
+  "id": "/",
+  "name": "MFS Customer Account",
+  "short_name": "MFS Account",
+  "description": "View loan payments, hire purchase schedules, and account details.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f5f7f6",
+  "theme_color": "#254db8",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,4 @@
+-- Intentionally empty. The loan applications schema is created by
+-- 20261022000100_loan_applications; this directory was left over from an
+-- earlier migration draft and Prisma requires every migration directory to
+-- contain a migration.sql file.
